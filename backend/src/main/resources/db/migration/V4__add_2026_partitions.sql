@@ -1,0 +1,2 @@
+CREATE TABLE click_events_2026 PARTITION OF click_events
+    FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');

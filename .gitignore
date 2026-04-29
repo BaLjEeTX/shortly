@@ -1,0 +1,39 @@
+# === Java / Maven ===
+backend/target/
+*.class
+*.jar
+*.war
+*.log
+*.iml
+.idea/
+
+# === Node / Frontend ===
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# === OS Files ===
+.DS_Store
+Thumbs.db
+
+# === IDE ===
+.vscode/
+*.swp
+*.swo
+
+# === Environment / Secrets ===
+.env
+*.env.local
+
+# === Build tools (downloaded locally) ===
+apache-maven-3.9.9/
+
+# === Test scripts ===
+test_flow.sh
+test_flow2.sh
+test_stats.sh
+get_urls_test.sh
+
+# === Misc ===
+extract.py
+generate_missing.py
