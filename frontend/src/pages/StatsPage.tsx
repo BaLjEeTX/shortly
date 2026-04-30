@@ -25,8 +25,16 @@ export function StatsPage() {
   const { data, isLoading } = useQuery<StatsData>({
     queryKey: ["stats", id],
     queryFn: async () => {
-      const { data } = await apiClient.get(`/api/v1/urls/${id}/stats`);
-      return data;
+      const [statsRes, timeSeriesRes, referrersRes] = await Promise.all([
+        apiClient.get(`/api/v1/urls/${id}/stats`),
+        apiClient.get(`/api/v1/urls/${id}/stats/timeseries`),
+        apiClient.get(`/api/v1/urls/${id}/stats/referrers`),
+      ]);
+      return {
+        totalClicks: statsRes.data.clickCount || 0,
+        timeSeries: timeSeriesRes.data || [],
+        referrers: referrersRes.data || [],
+      };
     },
   });
 
