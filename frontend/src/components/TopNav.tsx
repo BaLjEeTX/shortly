@@ -1,43 +1,46 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
-import { Button } from "./ui";
 import { UrlCreateForm } from "./UrlCreateForm";
 
 export function TopNav() {
   const logout = useAuthStore((s) => s.logout);
 
   return (
-    <nav className="sticky top-0 z-50 flex h-14 items-center justify-between bg-background px-4 py-2 border-b border-border shadow-sm">
-      <div className="flex items-center gap-4">
-        {/* Placeholder Hamburger */}
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 stroke-foreground">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </Button>
-        <Link to="/dashboard" className="flex items-center gap-1 font-bold text-xl tracking-tight">
-          <div className="bg-primary text-primary-foreground p-1 rounded-md flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-              <path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z" />
+    <header className="sticky top-0 z-50 w-full bg-black/60 backdrop-blur-2xl border-b border-white/[0.06]">
+      <div className="max-w-[1600px] mx-auto flex items-center justify-between h-16 px-4 md:px-6">
+        {/* Logo */}
+        <Link to="/dashboard" className="flex items-center gap-2.5 group">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-shadow duration-300">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 text-white">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-3.02a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.34 8.374" transform="translate(2,2) scale(0.85)" />
             </svg>
           </div>
-          <span>Shortly</span>
+          <span className="text-lg font-bold tracking-tight gradient-text hidden sm:block">Shortly</span>
         </Link>
-      </div>
 
-      <div className="hidden md:flex flex-1 max-w-2xl px-6">
-        <UrlCreateForm />
-      </div>
+        {/* Center: URL Create Form */}
+        <div className="flex-1 max-w-xl mx-4 hidden md:block">
+          <UrlCreateForm />
+        </div>
 
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={logout} className="rounded-full">
-          Logout
-        </Button>
-        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
-          {/* User Initial */}
-          U
+        {/* Right: User actions */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={logout}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 px-3 py-1.5 rounded-lg hover:bg-white/5"
+          >
+            Logout
+          </button>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold ring-2 ring-violet-500/20">
+            U
+          </div>
         </div>
       </div>
-    </nav>
+
+      {/* Mobile URL form */}
+      <div className="md:hidden px-4 pb-3">
+        <UrlCreateForm />
+      </div>
+    </header>
   );
 }
