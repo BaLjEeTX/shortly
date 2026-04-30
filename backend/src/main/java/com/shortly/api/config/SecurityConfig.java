@@ -29,10 +29,11 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())   // stateless API
             .cors(cors -> cors.configurationSource(corsConfig()))
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 // Public
                 .requestMatchers("/api/v1/auth/**").permitAll()
+                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/actuator/health/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // The redirect endpoint must be public

@@ -1,5 +1,5 @@
 # backend/Dockerfile
-FROM maven:3.9.9-eclipse-temurin-21-alpine AS deps
+FROM maven:3.9.9-eclipse-temurin-17-alpine AS deps
 WORKDIR /app
 COPY pom.xml .
 RUN mvn -B dependency:go-offline
@@ -8,7 +8,7 @@ FROM deps AS build
 COPY src ./src
 RUN mvn -B clean package -DskipTests
 
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:17-jre-alpine AS runtime
 RUN addgroup -S spring && adduser -S spring -G spring
 WORKDIR /app
 COPY --from=build --chown=spring:spring /app/target/*.jar app.jar
