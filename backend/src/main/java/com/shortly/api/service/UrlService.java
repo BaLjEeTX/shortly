@@ -41,21 +41,55 @@ public class UrlService {
 
     private static final long ID_OFFSET = 1_000_000L;
     private static final String CACHE_PREFIX = "url:";
+    // Anonymous (Redis-only) URLs use a separate id space, far above any DB
+    // primary key we'll plausibly reach, so their short codes can never collide
+    // with codes derived from `urls.id + ID_OFFSET`.
+    private static final long ANON_ID_OFFSET = 10_000_000_000L;
+    private static final String ANON_COUNTER_KEY = "url:anon:counter";
 
     @Transactional
     public UrlResponse create(CreateUrlRequest req, Long userId) {
-        return createInternal(req, userId, null);
+        return createPersisted(req, userId);
     }
 
-    @Transactional
+    /**
+     * Anonymous URLs live ONLY in Redis with a TTL. No DB row, no url_stats
+     * row, no cleanup job needed — Redis evicts them when the TTL expires.
+     * Capacity is bounded by Redis's `maxmemory` + `allkeys-lru` policy, so
+     * abuse can never blow up Postgres or grow the heap.
+     */
     public UrlResponse createAnonymous(CreateUrlRequest req) {
+        // 1. Validate + clamp TTL to [1, 5] minutes
         int duration = (req.durationMinutes() != null) ? req.durationMinutes() : 5;
-        // Clamp duration between 1 and 5 minutes
         duration = Math.max(1, Math.min(5, duration));
-        return createInternal(req, null, Duration.ofMinutes(duration));
+        Duration ttl = Duration.ofMinutes(duration);
+
+        // 2. Validate URL format and blocked domain — same checks as the durable path
+        urlValidator.validateOrThrow(req.longUrl());
+        String host = URI.create(req.longUrl()).getHost();
+        if (host != null && blockedDomainRepository.existsByDomainIgnoreCase(host)) {
+            throw new BlockedDomainException(host);
+        }
+
+        // 3. Get a unique id from Redis INCR (atomic, no DB roundtrip).
+        //    Add ANON_ID_OFFSET so the codespace is disjoint from DB-backed URLs.
+        Long counter = redis.opsForValue().increment(ANON_COUNTER_KEY);
+        if (counter == null) {
+            // Lettuce only returns null if the connection is broken; surface a clean error.
+            throw new IllegalStateException("Redis unavailable; cannot create anonymous URL");
+        }
+        String shortCode = base62Codec.encode(ANON_ID_OFFSET + counter);
+
+        // 4. Single Redis write with TTL — that's the only persistence
+        redis.opsForValue().set(CACHE_PREFIX + shortCode, req.longUrl(), ttl);
+
+        meterRegistry.counter("urls.created", "kind", "anonymous").increment();
+        log.info("Created anonymous url shortCode={} ttlMinutes={}", shortCode, duration);
+
+        return UrlResponse.anon(shortCode, req.longUrl(), baseUrl);
     }
 
-    private UrlResponse createInternal(CreateUrlRequest req, Long userId, Duration ttl) {
+    private UrlResponse createPersisted(CreateUrlRequest req, Long userId) {
         // 1. Validate URL format (Jakarta validation handles basics; we add semantic checks)
         urlValidator.validateOrThrow(req.longUrl());
 
@@ -69,7 +103,6 @@ public class UrlService {
         Url url = Url.builder()
             .longUrl(req.longUrl())
             .userId(userId)
-            .expiresAt(ttl != null ? java.time.Instant.now().plus(ttl) : null)
             .build();
         url = urlRepository.save(url);   // flush happens here; id populated
 
@@ -82,13 +115,10 @@ public class UrlService {
         urlStatsRepository.initForUrl(url.getId());
 
         // 6. Warm cache (proactive)
-        Duration finalTtl = ttl != null ? ttl : cacheTtl;
-        redis.opsForValue().set(CACHE_PREFIX + shortCode, req.longUrl(), finalTtl);
+        redis.opsForValue().set(CACHE_PREFIX + shortCode, req.longUrl(), cacheTtl);
 
-        meterRegistry.counter("urls.created").increment();
-
-        log.info("Created url id={} shortCode={} userId={} ttlMinutes={}",
-            url.getId(), shortCode, userId, ttl != null ? ttl.toMinutes() : "none");
+        meterRegistry.counter("urls.created", "kind", "persistent").increment();
+        log.info("Created url id={} shortCode={} userId={}", url.getId(), shortCode, userId);
 
         return UrlResponse.from(url, baseUrl, 0L);
     }

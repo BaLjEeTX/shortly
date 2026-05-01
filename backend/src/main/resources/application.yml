@@ -57,6 +57,9 @@ server:
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5174}
+  cors:
+    # Comma-separated list of allowed origins. Override in prod via CORS_ALLOWED_ORIGINS env var.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5174}
   jwt:
     secret: ${JWT_SECRET:change-me-in-production-must-be-at-least-256-bits-long}
     access-token-ttl: PT15M    # 15 minutes

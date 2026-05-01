@@ -30,7 +30,9 @@ public class UrlController {
     public ResponseEntity<UrlResponse> createAnonymous(
             @Valid @RequestBody CreateUrlRequest req) {
         UrlResponse res = urlService.createAnonymous(req);
-        return ResponseEntity.created(URI.create("/api/v1/urls/" + res.id())).body(res);
+        // Anonymous URLs have no DB id and no per-id endpoint; point Location at the
+        // public short URL itself so clients still get a valid resource locator.
+        return ResponseEntity.created(URI.create(res.shortUrl())).body(res);
     }
 
     @GetMapping("/{id}")

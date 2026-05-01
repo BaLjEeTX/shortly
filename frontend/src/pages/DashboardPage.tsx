@@ -122,7 +122,7 @@ export function DashboardPage() {
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     {/* Copy */}
                     <button
-                      onClick={() => handleCopy(url.shortUrl || `http://localhost:8080/${url.shortCode}`, url.id)}
+                      onClick={() => handleCopy(url.shortUrl || `http://localhost:8080/${url.shortCode}`, url.id!)}
                       className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
                       title="Copy short URL"
                     >
@@ -148,7 +148,7 @@ export function DashboardPage() {
                     </Link>
                     {/* Delete */}
                     <button
-                      onClick={() => deleteUrl.mutate(url.id)}
+                      onClick={() => deleteUrl.mutate(url.id!)}
                       className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all"
                       title="Delete"
                     >

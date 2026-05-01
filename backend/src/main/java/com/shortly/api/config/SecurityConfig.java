@@ -57,12 +57,18 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder(12);  // cost=12 → ~250ms per hash, good in 2026
     }
 
+    @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}")
+    private String allowedOriginsCsv;
+
     @Bean
     public UrlBasedCorsConfigurationSource corsConfig() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174", "https://shortly.app"));
-        cfg.setAllowedMethods(List.of("GET", "POST", "DELETE", "OPTIONS"));
-        cfg.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        cfg.setAllowedOrigins(java.util.Arrays.stream(allowedOriginsCsv.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .toList());
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
         cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);
         var source = new UrlBasedCorsConfigurationSource();

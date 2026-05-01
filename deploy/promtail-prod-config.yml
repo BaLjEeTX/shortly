@@ -1,0 +1,42 @@
+# Promtail running on EC2, shipping logs to Grafana Cloud Loki.
+# Set GRAFANA_LOKI_URL / _USER / _TOKEN in /opt/shortly/.env.
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: ${GRAFANA_LOKI_URL}
+    basic_auth:
+      username: ${GRAFANA_LOKI_USER}
+      password: ${GRAFANA_LOKI_TOKEN}
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - target_label: 'env'
+        replacement: 'production'
+    pipeline_stages:
+      - match:
+          selector: '{service="backend"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  logger: logger_name
+                  traceId: traceId
+                  userId: userId
+            - labels:
+                level:

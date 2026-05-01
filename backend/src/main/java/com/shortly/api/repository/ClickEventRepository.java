@@ -14,24 +14,32 @@ public class ClickEventRepository {
 
     private final JdbcTemplate jdbc;
 
-    /** Bulk insert: 1 round-trip for N rows. Way faster than JPA saveAll. */
+    /**
+     * Bulk insert: 1 round-trip for N rows. Way faster than JPA saveAll.
+     *
+     * Uses INSERT … SELECT so that clicks on URLs without a `urls` row
+     * (anonymous Redis-only URLs, soft-deleted URLs, expired URLs) are
+     * silently skipped instead of failing the batch with a NOT NULL
+     * violation on url_id.
+     */
     public void batchInsert(List<ClickEvent> events) {
         jdbc.batchUpdate(
             """
             INSERT INTO click_events
                 (url_id, clicked_at, referrer, user_agent, ip_address)
-            VALUES
-                ((SELECT id FROM urls WHERE short_code = ?),
-                 ?, ?, ?, ?::inet)
+            SELECT id, ?, ?, ?, ?::inet
+              FROM urls
+             WHERE short_code = ?
+               AND deleted_at IS NULL
             """,
             events,
             500,  // JDBC batch size
             (ps, ev) -> {
-                ps.setString(1, ev.shortCode());
-                ps.setTimestamp(2, Timestamp.from(ev.clickedAt()));
-                ps.setString(3, ev.referrer());
-                ps.setString(4, ev.userAgent());
-                ps.setString(5, ev.ipAddress());
+                ps.setTimestamp(1, Timestamp.from(ev.clickedAt()));
+                ps.setString(2, ev.referrer());
+                ps.setString(3, ev.userAgent());
+                ps.setString(4, ev.ipAddress());
+                ps.setString(5, ev.shortCode());
             }
         );
     }

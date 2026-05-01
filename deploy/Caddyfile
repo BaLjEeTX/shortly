@@ -1,0 +1,32 @@
+# Caddy on EC2: HTTPS termination for the API subdomain only.
+# The frontend lives on Vercel at https://${FRONTEND_DOMAIN} and is not
+# proxied through this server.
+#
+# IMPORTANT: this server only handles api.<domain>. The OAuth callback URL
+# the SPA lands on (/oauth2/callback) is handled by the SPA on Vercel,
+# NOT here. Caddy here only needs to expose:
+#   - /api/*                        → backend
+#   - /oauth2/authorization/*       → backend (start of OAuth flow)
+#   - /login/oauth2/*               → backend (Google's redirect_uri)
+#   - /actuator/*                   → backend (health, prometheus)
+#   - /<short-code>                 → backend (public redirect)
+
+{$API_DOMAIN} {
+    encode gzip zstd
+
+    # All backend traffic — single proxy line covers everything below.
+    reverse_proxy backend:8080
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options    "nosniff"
+        Referrer-Policy           "strict-origin-when-cross-origin"
+        # CORS is handled by the Spring app; don't double-set it here.
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}

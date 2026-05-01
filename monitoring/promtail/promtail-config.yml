@@ -1,11 +1,11 @@
 # Promtail tails Docker container logs and ships them to Loki.
-# Each docker-compose service shows up as a separate "service" label so you can
+# Each compose service shows up as a separate `service` label so you can
 # query e.g. {service="api"} or {service=~"api|postgres"} in Grafana.
 
 server:
   http_listen_port: 9080
   grpc_listen_port: 0
-  log_level: warn
+  log_level: info
 
 positions:
   filename: /tmp/positions.yaml
@@ -14,27 +14,26 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  # Pull logs from every running Docker container on the host
   - job_name: docker
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
         refresh_interval: 5s
     relabel_configs:
-      # Use the compose service name (`api`, `postgres`, etc.) as the `service` label
+      # Compose service name (`api`, `postgres`, etc.) becomes the `service` label
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
         target_label: 'service'
-      # Use the project name as `compose_project`
       - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
         target_label: 'compose_project'
-      # Bare container name (without the leading slash) as `container`
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'
         target_label: 'container'
-      # Image as `image`
       - source_labels: ['__meta_docker_container_log_stream']
         target_label: 'stream'
     pipeline_stages:
-      # Parse JSON logs from the Spring Boot api so its fields become Loki labels
+      # docker_sd_configs already feeds us the raw application log line.
+      # Try to parse Spring's JSON (level, logger_name, message, traceId, …).
+      # If a line isn't JSON (e.g. the Spring banner during startup), the
+      # stage is a no-op and the raw line is kept verbatim.
       - match:
           selector: '{service="api"}'
           stages:
@@ -43,11 +42,8 @@ scrape_configs:
                   level: level
                   logger: logger_name
                   thread: thread_name
-                  message: message
                   traceId: traceId
                   userId: userId
                   requestId: requestId
             - labels:
                 level:
-            - output:
-                source: message

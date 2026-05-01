@@ -2,7 +2,7 @@
 import { apiClient } from './client';
 
 export interface UrlResponse {
-  id: number;
+  id: number | null;   // null for anonymous (Redis-only) URLs
   shortCode: string;
   shortUrl: string;
   longUrl: string;

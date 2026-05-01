@@ -1,0 +1,87 @@
+# Production compose, lives on the EC2 box at /opt/shortly/docker-compose.yml
+#
+# Split-architecture deploy:
+#   - Postgres  → Supabase (external, managed)
+#   - Frontend  → Vercel (external, static CDN)
+#   - Backend   → here, EC2
+#   - Redis     → here, EC2 (small, no network hop for cache lookups)
+#   - Caddy     → here, EC2 (HTTPS for api.yourdomain.com)
+#
+# This compose only runs three containers; total RAM footprint ~600 MB,
+# fits comfortably on a t2.micro / t3.micro free-tier instance.
+
+services:
+  backend:
+    image: ghcr.io/${GITHUB_OWNER}/shortly-backend:latest
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: ${SUPABASE_DB_URL}
+      DB_USER: ${SUPABASE_DB_USER}
+      DB_PASSWORD: ${SUPABASE_DB_PASSWORD}
+      REDIS_HOST: redis
+      JWT_SECRET: ${JWT_SECRET}
+      # API runs on api.<domain>; SPA runs on apex <domain>.
+      APP_BASE_URL: https://${API_DOMAIN}
+      APP_FRONTEND_URL: https://${FRONTEND_DOMAIN}
+      CORS_ALLOWED_ORIGINS: https://${FRONTEND_DOMAIN}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      JAVA_OPTS: "-Xmx450m -XX:MaxRAMPercentage=70 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""        # no disk persistence — cache is rebuildable
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+      FRONTEND_DOMAIN: ${FRONTEND_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  promtail:
+    # Optional — ships container logs to Grafana Cloud Loki.
+    # Comment this whole service out until you've set up Grafana Cloud.
+    image: grafana/promtail:3.1.0
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./promtail-prod-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_positions:/tmp
+
+volumes:
+  caddy_data:
+  caddy_config:
+  promtail_positions:

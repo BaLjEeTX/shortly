@@ -23,4 +23,17 @@ public record UrlResponse(
             clickCount
         );
     }
+
+    /** Build a response for an ephemeral, Redis-only anonymous URL (no DB row, no id). */
+    public static UrlResponse anon(String shortCode, String longUrl, String baseUrl) {
+        return new UrlResponse(
+            null,
+            shortCode,
+            baseUrl + "/" + shortCode,
+            longUrl,
+            null,
+            Instant.now(),
+            0L
+        );
+    }
 }
