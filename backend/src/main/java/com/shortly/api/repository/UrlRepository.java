@@ -17,4 +17,8 @@ public interface UrlRepository extends JpaRepository<Url, Long> {
     Optional<String> findActiveLongUrlByShortCode(String shortCode);
 
     java.util.List<Url> findByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM Url u WHERE u.expiresAt < :now")
+    int deleteExpiredUrls(@org.springframework.data.repository.query.Param("now") java.time.Instant now);
 }

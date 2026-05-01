@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Spring Boot via /actuator/prometheus
+  - job_name: 'shortly-api'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api:8080']
+        labels:
+          service: 'api'
+
+  # Self-scrape so you can also see Prometheus's own health
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

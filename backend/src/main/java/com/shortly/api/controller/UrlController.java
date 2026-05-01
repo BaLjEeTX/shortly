@@ -26,6 +26,13 @@ public class UrlController {
         return ResponseEntity.created(URI.create("/api/v1/urls/" + res.id())).body(res);
     }
 
+    @PostMapping("/anonymous")
+    public ResponseEntity<UrlResponse> createAnonymous(
+            @Valid @RequestBody CreateUrlRequest req) {
+        UrlResponse res = urlService.createAnonymous(req);
+        return ResponseEntity.created(URI.create("/api/v1/urls/" + res.id())).body(res);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UrlResponse> getById(@PathVariable Long id, @CurrentUser Long userId) {
         return ResponseEntity.ok(urlService.getById(id, userId));

@@ -11,6 +11,8 @@ const queryClient = new QueryClient();
 
 import { TopNav } from "./components/TopNav";
 
+import { LandingPage } from "./pages/LandingPage";
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken);
   if (!token) return <Navigate to="/login" replace />;
@@ -30,7 +32,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={token ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <LoginPage />} />
           <Route path="/register" element={token ? <Navigate to="/dashboard" /> : <RegisterPage />} />
           <Route path="/oauth2/callback" element={<OAuthCallback />} />

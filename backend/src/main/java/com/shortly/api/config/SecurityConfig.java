@@ -33,8 +33,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public
                 .requestMatchers("/api/v1/auth/**").permitAll()
+                .requestMatchers("/api/v1/urls/anonymous").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/actuator/health/**").permitAll()
+                .requestMatchers("/actuator/prometheus", "/actuator/info").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // The redirect endpoint must be public
                 .requestMatchers("/{shortCode:[a-zA-Z0-9]{1,10}}").permitAll()

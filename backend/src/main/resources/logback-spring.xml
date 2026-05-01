@@ -1,25 +1,40 @@
 <!-- backend/src/main/resources/logback-spring.xml -->
 <configuration>
+
+    <!--
+      Both dev and prod emit JSON to stdout so Promtail can ship straight to Loki
+      without regex parsing. Set env LOG_PRETTY=1 to flip dev to a human-readable
+      pattern when you want to read raw `docker logs`.
+    -->
+
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="shortly-api"/>
+    <springProperty scope="context" name="activeProfile" source="spring.profiles.active" defaultValue="dev"/>
+
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <customFields>{"app":"${appName}","profile":"${activeProfile}"}</customFields>
+        </encoder>
+    </appender>
+
+    <appender name="PRETTY" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%X{traceId}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
     <springProfile name="prod">
-        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                <includeMdcKeyName>traceId</includeMdcKeyName>
-                <includeMdcKeyName>userId</includeMdcKeyName>
-            </encoder>
-        </appender>
         <root level="INFO">
-            <appender-ref ref="JSON" />
+            <appender-ref ref="JSON"/>
         </root>
     </springProfile>
 
     <springProfile name="dev">
-        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder>
-                <pattern>%d{HH:mm:ss.SSS} %-5level [%X{traceId}] %logger{36} - %msg%n</pattern>
-            </encoder>
-        </appender>
         <root level="INFO">
-            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="JSON"/>
         </root>
     </springProfile>
+
 </configuration>

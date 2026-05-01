@@ -44,6 +44,18 @@ public class UrlService {
 
     @Transactional
     public UrlResponse create(CreateUrlRequest req, Long userId) {
+        return createInternal(req, userId, null);
+    }
+
+    @Transactional
+    public UrlResponse createAnonymous(CreateUrlRequest req) {
+        int duration = (req.durationMinutes() != null) ? req.durationMinutes() : 5;
+        // Clamp duration between 1 and 5 minutes
+        duration = Math.max(1, Math.min(5, duration));
+        return createInternal(req, null, Duration.ofMinutes(duration));
+    }
+
+    private UrlResponse createInternal(CreateUrlRequest req, Long userId, Duration ttl) {
         // 1. Validate URL format (Jakarta validation handles basics; we add semantic checks)
         urlValidator.validateOrThrow(req.longUrl());
 
@@ -57,6 +69,7 @@ public class UrlService {
         Url url = Url.builder()
             .longUrl(req.longUrl())
             .userId(userId)
+            .expiresAt(ttl != null ? java.time.Instant.now().plus(ttl) : null)
             .build();
         url = urlRepository.save(url);   // flush happens here; id populated
 
@@ -69,12 +82,13 @@ public class UrlService {
         urlStatsRepository.initForUrl(url.getId());
 
         // 6. Warm cache (proactive)
-        redis.opsForValue().set(CACHE_PREFIX + shortCode, req.longUrl(), cacheTtl);
+        Duration finalTtl = ttl != null ? ttl : cacheTtl;
+        redis.opsForValue().set(CACHE_PREFIX + shortCode, req.longUrl(), finalTtl);
 
         meterRegistry.counter("urls.created").increment();
 
-        log.info("Created url id={} shortCode={} userId={}",
-            url.getId(), shortCode, userId);
+        log.info("Created url id={} shortCode={} userId={} ttlMinutes={}",
+            url.getId(), shortCode, userId, ttl != null ? ttl.toMinutes() : "none");
 
         return UrlResponse.from(url, baseUrl, 0L);
     }
