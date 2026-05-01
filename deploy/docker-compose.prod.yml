@@ -75,7 +75,13 @@ services:
     # Comment this whole service out until you've set up Grafana Cloud.
     image: grafana/promtail:3.1.0
     restart: unless-stopped
-    command: -config.file=/etc/promtail/promtail-config.yml
+    # `-config.expand-env=true` is required for ${VAR} substitution in the
+    # config file to work; without it, Promtail sends the literal "${GRAFANA_LOKI_URL}".
+    command: ["-config.file=/etc/promtail/promtail-config.yml", "-config.expand-env=true"]
+    environment:
+      GRAFANA_LOKI_URL:   ${GRAFANA_LOKI_URL}
+      GRAFANA_LOKI_USER:  ${GRAFANA_LOKI_USER}
+      GRAFANA_LOKI_TOKEN: ${GRAFANA_LOKI_TOKEN}
     volumes:
       - ./promtail-prod-config.yml:/etc/promtail/promtail-config.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
