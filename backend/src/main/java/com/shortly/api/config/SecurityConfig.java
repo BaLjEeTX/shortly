@@ -8,7 +8,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -47,6 +49,13 @@ public class SecurityConfig {
             )
             .oauth2Login(oauth2 -> oauth2
                 .successHandler(oAuth2LoginSuccessHandler)
+            )
+            // For an API: unauthenticated requests should get 401 JSON, not a 302
+            // redirect to the OAuth provider (which is the default when oauth2Login()
+            // is configured). The redirect-to-OAuth flow is still triggered explicitly
+            // by hitting /oauth2/authorization/google from the frontend's button.
+            .exceptionHandling(eh -> eh
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
